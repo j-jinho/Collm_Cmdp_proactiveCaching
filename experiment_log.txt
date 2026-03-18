@@ -1,0 +1,12 @@
+nohup: ignoring input
+`torch_dtype` is deprecated! Use `dtype` instead!
+🚀 CoLLM-CMDP [리얼 데이터 동기화 완료] 엣지 캐싱 본 실험을 시작합니다...
+⏳ [DataLoader] 데이터 로딩 및 메모리 최적화를 시작합니다...
+✅ MIND 데이터 로드 완료: 2,232,748 건
+✅ KuaiRand 데이터 로드 완료: 68,148,288 건
+✅ MovieLens 데이터 로드 완료: 32,000,204 건
+✅ M-Lab 데이터 로드 완료: 336 건
+⏱️ 타임라인 정규화 진행 중...
+✅ 공통 타임라인 맵핑 완료! 기준점(T0): 2022-04-08 01:19:59.602000
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]Loading weights:   0%|          | 1/201 [00:00<00:42,  4.70it/s]Loading weights:  20%|█▉        | 40/201 [00:00<00:01, 149.02it/s]Loading weights:  30%|██▉       | 60/201 [00:00<00:01, 130.19it/s]Loading weights:  38%|███▊      | 76/201 [00:00<00:01, 113.47it/s]Loading weights:  52%|█████▏    | 104/201 [00:00<00:00, 154.26it/s]Loading weights:  65%|██████▍   | 130/201 [00:00<00:00, 179.38it/s]Loading weights:  75%|███████▌  | 151/201 [00:00<00:00, 185.96it/s]Loading weights:  88%|████████▊ | 177/201 [00:01<00:00, 204.70it/s]Loading weights:  99%|█████████▉| 199/201 [00:01<00:00, 157.31it/s]Loading weights: 100%|██████████| 201/201 [00:01<00:00, 152.38it/s]
+Consolidate compiler generated dependencies of target scratch_edge_caching_sim
