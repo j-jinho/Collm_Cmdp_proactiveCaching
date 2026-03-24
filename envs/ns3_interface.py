@@ -13,7 +13,8 @@ class EdgeCachingCMDPEnv(gym.Env):
     def __init__(self, target_name="edge_caching_sim"):
         super().__init__()
         
-        self.action_space = spaces.Box(low=0.0, high=100000.0, shape=(3,), dtype=np.float32)
+        # 🟢 [수정] 액션 스페이스를 4차원으로 확장 (real_req_id 추가)
+        self.action_space = spaces.Box(low=0.0, high=100000.0, shape=(4,), dtype=np.float32)
         
         self.observation_space = spaces.Box(
             low=np.array([0.0, 0.0, 0.0]), 
@@ -28,18 +29,21 @@ class EdgeCachingCMDPEnv(gym.Env):
         )
         self.traffic_weights = {"NEWS": 1, "SHORT": 10, "VOD": 1000}
 
-    def step(self, action, predicted_traffic_type, b_avail, e_t, pred_id):
+    # 🟢 [수정] real_req_id 인자 추가
+    def step(self, action, predicted_traffic_type, b_avail, e_t, pred_id, real_req_id):
         a_t = action[0]
         
         req_bw = self.traffic_weights.get(predicted_traffic_type, 1)
         cost_a_t = req_bw * a_t
         violation = max(0.0, cost_a_t - b_avail) 
 
-        ns3_obs, ns3_reward, done, truncated, info = self.ns3_env.step([a_t, b_avail, float(pred_id)])
+        # 🟢 [수정] C++로 배열 4개를 꽉 채워서 전송
+        ns3_obs, ns3_reward, done, truncated, info = self.ns3_env.step(
+            [a_t, b_avail, float(pred_id), float(real_req_id)]
+        )
         
-        # 🟢 [핵심 버그 수정] info.get(...)의 가짜 0.1을 버리고, C++가 넘겨준 '진짜 보상'을 사용!
+        # 🟢 [버그 픽스] C++에서 계산해 준 진짜 Reward를 수신
         reward = float(ns3_reward) 
-        
         c_remain = ns3_obs[0] if len(ns3_obs) > 0 else 0.5 
         
         next_state = np.array([e_t, b_avail, c_remain], dtype=np.float32)

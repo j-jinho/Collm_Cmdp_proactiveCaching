@@ -22,16 +22,24 @@ class OriginalCoLLMEngine(nn.Module):
         self.device = device
         
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        
+        # =========================================================
+        # 🟢 [최종 픽스] device_map 옵션을 아예 삭제해서 웜업(Warmup) 버그 차단!
+        # CPU에 16-bit로 먼저 가볍게 올린 뒤, GPU로 한 번에 넘깁니다. 
+        # (2.2GB라 WSL 통과 가능)
+        # =========================================================
         self.llm = AutoModelForCausalLM.from_pretrained(
-            model_id, torch_dtype=torch.float16, device_map="auto"
-        )
+            model_id, 
+            torch_dtype=torch.float16, 
+            low_cpu_mem_usage=True
+        ).to(device)
         
         self.llm_dim = self.llm.config.hidden_size
         
         self.cie = CIE_Module(sasrec_dim=sasrec_dim, llm_dim=self.llm_dim).to(device)
         self.cie = self.cie.to(torch.float16) 
         
-        # 🟢 [추가] 타겟 마스킹용 토큰 ID 미리 추출 (32000지선다 -> 3지선다)
+        # 타겟 마스킹용 토큰 ID 미리 추출 (32000지선다 -> 3지선다)
         self.target_words = ["NEWS", "SHORT", "VOD"]
         self.target_ids = [self.tokenizer(word, add_special_tokens=False).input_ids[-1] for word in self.target_words]
 
@@ -59,18 +67,17 @@ class OriginalCoLLMEngine(nn.Module):
         logits = outputs.logits[:, -1, :] 
         
         with torch.no_grad():
-            # 🟢 [타겟 마스킹 적용] 딱 3개(NEWS, SHORT, VOD)의 로짓만 추출
             target_logits = logits[:, self.target_ids]
             
-            # 3개 선택지 안에서만 100% 비중으로 확률(Softmax) 재계산
-            probs = F.softmax(target_logits, dim=-1).to(torch.float32) 
+            # 🟢 Temperature Scaling (0.1) 적용
+            temperature = 0.1
+            probs = F.softmax(target_logits / temperature, dim=-1).to(torch.float32) 
             
-            # 엔트로피 계산 (정규화 분모를 log(3)으로 변경하여 0.0~1.0 스케일 맞춤)
+            # 엔트로피 계산
             entropy = -torch.sum(probs * torch.log(probs + 1e-5), dim=-1)
             max_entropy = torch.log(torch.tensor(probs.size(-1), dtype=torch.float32))
             et = (entropy / max_entropy).item()
             
-            # 🟢 [버그 픽스] main.py가 받을 수 있게 가장 확률 높은 '카테고리 문자열'을 반환!
             pred_idx = torch.argmax(probs, dim=-1).item()
             pred_type = self.target_words[pred_idx]
             
