@@ -13,7 +13,6 @@ class EdgeCachingCMDPEnv(gym.Env):
     def __init__(self, target_name="edge_caching_sim"):
         super().__init__()
         
-        # 🟢 [수정] 액션 스페이스를 4차원으로 확장 (real_req_id 추가)
         self.action_space = spaces.Box(low=0.0, high=100000.0, shape=(4,), dtype=np.float32)
         
         self.observation_space = spaces.Box(
@@ -29,7 +28,6 @@ class EdgeCachingCMDPEnv(gym.Env):
         )
         self.traffic_weights = {"NEWS": 1, "SHORT": 10, "VOD": 1000}
 
-    # 🟢 [수정] real_req_id 인자 추가
     def step(self, action, predicted_traffic_type, b_avail, e_t, pred_id, real_req_id):
         a_t = action[0]
         
@@ -37,12 +35,12 @@ class EdgeCachingCMDPEnv(gym.Env):
         cost_a_t = req_bw * a_t
         violation = max(0.0, cost_a_t - b_avail) 
 
-        # 🟢 [수정] C++로 배열 4개를 꽉 채워서 전송
-        ns3_obs, ns3_reward, done, truncated, info = self.ns3_env.step(
-            [a_t, b_avail, float(pred_id), float(real_req_id)]
-        )
+        # 🟢 [핵심 픽스] np.array를 쓰면 메모리 이중 해제 버그가 생김! 
+        # 순수 Python List로 보내야 ns3-ai가 안전하게 C++로 복사해갑니다.
+        ns3_action_list = [float(a_t), float(b_avail), float(pred_id), float(real_req_id)]
         
-        # 🟢 [버그 픽스] C++에서 계산해 준 진짜 Reward를 수신
+        ns3_obs, ns3_reward, done, truncated, info = self.ns3_env.step(ns3_action_list)
+        
         reward = float(ns3_reward) 
         c_remain = ns3_obs[0] if len(ns3_obs) > 0 else 0.5 
         
